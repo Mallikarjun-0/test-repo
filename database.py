@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from test_python_deps.models import User, Product
+from models import User, Product
 
 
 class Database:

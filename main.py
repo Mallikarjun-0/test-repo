@@ -1,5 +1,5 @@
-from test_python_deps.services import UserService, CatalogService
-from test_python_deps.database import db
+from services import UserService, CatalogService
+from database import db
 
 
 def main():

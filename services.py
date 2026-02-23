@@ -1,5 +1,5 @@
-from test_python_deps.models import User, Product
-from test_python_deps.database import db
+from models import User, Product
+from database import db
 
 
 class UserService:
