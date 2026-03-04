@@ -5,6 +5,7 @@ class User:
     id: int
     name: str
     email: str
+    age: int
 
 @dataclass
 class Product:
