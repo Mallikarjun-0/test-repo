@@ -6,6 +6,7 @@ class User:
     name: str
     email: str
     age: int
+    phone_number: str
 
 @dataclass
 class Product:

@@ -6,7 +6,7 @@ from models import Product, User
 
 
 def test_user_creation_populates_all_fields() -> None:
-    user = User(id=1, name="Alice Smith", email="alice@example.com", age=30)
+    user = User(id=1, name="Alice Smith", email="alice@example.com", age=30, phone_number="555-0123")
 
     assert user.id == 1
     assert user.name == "Alice Smith"
@@ -16,17 +16,61 @@ def test_user_creation_populates_all_fields() -> None:
         "name": "Alice Smith",
         "email": "alice@example.com",
         "age": 30,
+        "phone_number": "555-0123",
     }
 
 
 def test_user_equality_compares_every_field() -> None:
-    baseline = User(id=1, name="Alice Smith", email="alice@example.com", age=30)
+    baseline = User(
+        id=1,
+        name="Alice Smith",
+        email="alice@example.com",
+        age=30,
+        phone_number="555-0123",
+    )
 
-    assert baseline == User(id=1, name="Alice Smith", email="alice@example.com", age=30)
-    assert baseline != User(id=2, name="Alice Smith", email="alice@example.com", age=30)
-    assert baseline != User(id=1, name="Alice", email="alice@example.com", age=30)
-    assert baseline != User(id=1, name="Alice Smith", email="alice@other.com", age=30)
-    assert baseline != User(id=1, name="Alice Smith", email="alice@example.com", age=31)
+    assert baseline == User(
+        id=1,
+        name="Alice Smith",
+        email="alice@example.com",
+        age=30,
+        phone_number="555-0123",
+    )
+    assert baseline != User(
+        id=2,
+        name="Alice Smith",
+        email="alice@example.com",
+        age=30,
+        phone_number="555-0123",
+    )
+    assert baseline != User(
+        id=1,
+        name="Alice",
+        email="alice@example.com",
+        age=30,
+        phone_number="555-0123",
+    )
+    assert baseline != User(
+        id=1,
+        name="Alice Smith",
+        email="alice@other.com",
+        age=30,
+        phone_number="555-0123",
+    )
+    assert baseline != User(
+        id=1,
+        name="Alice Smith",
+        email="alice@example.com",
+        age=31,
+        phone_number="555-0123",
+    )
+    assert baseline != User(
+        id=1,
+        name="Alice Smith",
+        email="alice@example.com",
+        age=30,
+        phone_number="555-0456",
+    )
 
 
 def test_product_creation_populates_all_fields() -> None:
