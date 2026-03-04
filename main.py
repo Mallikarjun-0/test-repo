@@ -12,8 +12,8 @@ def main():
     router = Router()
 
     @router.route("POST", "/users/{user_id}")
-    def register_user_route(user_id: int, name: str, email: str, age: int):
-        return user_service.register(user_id, name, email, age)
+    def register_user_route(user_id: int, name: str, email: str, age: int, phone_number: str):
+        return user_service.register(user_id, name, email, age, phone_number)
 
     @router.route("POST", "/products/{product_id}")
     def add_product_route(product_id: int, name: str, price: float):
@@ -21,7 +21,14 @@ def main():
 
     # Use the services via router dispatch
     try:
-        user = router.dispatch("POST", "/users/1", name="Alice Smith", email="alice@example.com", age=30)
+        user = router.dispatch(
+            "POST",
+            "/users/1",
+            name="Alice Smith",
+            email="alice@example.com",
+            age=30,
+            phone_number="555-0199",
+        )
         product = router.dispatch("POST", "/products/101", name="Laptop", price=999.99)
     except RouteNotFoundError as error:
         print(error)
