@@ -1,50 +1,62 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, Tuple
+from typing import Any, Callable, Dict, Iterable, Pattern, Tuple
 
 
 Handler = Callable[..., Any]
+_PATH_PARAMETER = re.compile(r"\{(?P<name>[a-zA-Z_]\w*)\}")
 
 
 class RouteNotFoundError(Exception):
-    """Raised when dispatch finds no registered handler for a route."""
+    """Raised when dispatch cannot find a matching handler for a request."""
 
 
 class DuplicateRouteError(Exception):
-    """Raised when trying to register a route that already exists."""
+    """Raised when attempting to register a route that already exists."""
 
 
 @dataclass(frozen=True)
-class RouteKey:
+class RouteInfo:
     method: str
-    path: str
+    template: str
+    parameter_names: Tuple[str, ...]
 
-    def __post_init__(self) -> None:
-        normalized_method = self.method.upper()
-        normalized_path = self.path if self.path.startswith("/") else f"/{self.path}"
-        object.__setattr__(self, "method", normalized_method)
-        object.__setattr__(self, "path", normalized_path)
+
+@dataclass(frozen=True)
+class _Route:
+    method: str
+    template: str
+    handler: Handler
+    pattern: Pattern[str]
+
+    @property
+    def parameter_names(self) -> Tuple[str, ...]:
+        return tuple(self.pattern.groupindex.keys())
 
 
 class Router:
-    """Simple HTTP-style router that dispatches handlers by method and path."""
+    """HTTP-style router that supports path parameters."""
 
     def __init__(self) -> None:
-        self._routes: Dict[RouteKey, Handler] = {}
+        self._routes: Dict[str, Dict[str, _Route]] = {}
 
     def register(self, method: str, path: str, handler: Handler) -> Handler:
-        """Register a handler for the supplied HTTP-style method/path."""
-
-        key = RouteKey(method, path)
-        if key in self._routes:
-            raise DuplicateRouteError(f"Route already registered: {key}")
-        self._routes[key] = handler
+        method_key = method.upper()
+        template = self._normalize_path(path)
+        method_registry = self._routes.setdefault(method_key, {})
+        if template in method_registry:
+            raise DuplicateRouteError(f"Route already registered for {method_key} {template}")
+        method_registry[template] = _Route(
+            method=method_key,
+            template=template,
+            handler=handler,
+            pattern=self._compile_pattern(template),
+        )
         return handler
 
     def route(self, method: str, path: str) -> Callable[[Handler], Handler]:
-        """Decorator-style helper that registers a handler for a route."""
-
         def decorator(handler: Handler) -> Handler:
             self.register(method, path, handler)
             return handler
@@ -52,24 +64,39 @@ class Router:
         return decorator
 
     def dispatch(self, method: str, path: str, **kwargs: Any) -> Any:
-        """Call the handler registered for the method/path."""
+        method_key = method.upper()
+        normalized_path = self._normalize_path(path)
+        for route in self._routes.get(method_key, {}).values():
+            match = route.pattern.match(normalized_path)
+            if match:
+                params = {**match.groupdict(), **kwargs}
+                return route.handler(**params)
+        raise RouteNotFoundError(f"No route for {method_key} {normalized_path}")
 
-        key = RouteKey(method, path)
-        handler = self._routes.get(key)
-        if handler is None:
-            raise RouteNotFoundError(f"No handler registered for {key}")
-        return handler(**kwargs)
-
-    def list_routes(self) -> Tuple[RouteKey, ...]:
-        """Return all registered routes."""
-
-        return tuple(self._routes.keys())
+    def list_routes(self) -> Tuple[RouteInfo, ...]:
+        return tuple(
+            RouteInfo(method=route.method, template=route.template, parameter_names=route.parameter_names)
+            for routes_by_template in self._routes.values()
+            for route in routes_by_template.values()
+        )
 
     def register_many(self, routes: Iterable[Tuple[str, str, Handler]]) -> None:
-        """Bulk register handlers from an iterable of (method, path, handler)."""
-
         for method, path, handler in routes:
             self.register(method, path, handler)
 
     def __len__(self) -> int:
-        return len(self._routes)
+        return sum(len(routes) for routes in self._routes.values())
+
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        normalized = path.strip()
+        if not normalized.startswith("/"):
+            normalized = f"/{normalized}"
+        if len(normalized) > 1 and normalized.endswith("/"):
+            normalized = normalized[:-1]
+        return normalized
+
+    @staticmethod
+    def _compile_pattern(template: str) -> Pattern[str]:
+        regex = _PATH_PARAMETER.sub(lambda match: f"(?P<{match.group('name')}>[^/]+)", template)
+        return re.compile(f"^{regex}$")
